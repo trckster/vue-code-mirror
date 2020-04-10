@@ -27,7 +27,11 @@
 
         <div class="editor">
             <codemirror
-                    v-model="code"
+                    :value="code"
+                    @ready="onCmReady"
+                    @focus="onCmFocus"
+                    @changes="onCmChange"
+                    @input="onCmCodeChange"
                     :options="options">
             </codemirror>
         </div>
@@ -36,11 +40,17 @@
 
 <script>
     import 'codemirror/lib/codemirror.css'
-    import { codemirror } from 'vue-codemirror'
+    import { CodeMirror, codemirror } from 'vue-codemirror'
     import 'codemirror/theme/eclipse.css'
+    import 'codemirror/addon/hint/show-hint'
+    import 'codemirror/addon/hint/show-hint.css'
+
+    /** Linters for languages JS, C, Python */
     import 'codemirror/mode/javascript/javascript'
     import 'codemirror/mode/clike/clike'
     import 'codemirror/mode/python/python'
+
+    import pythonExtraHintWords from "@/assets/js/pythonExtraHintWords";
 
     export default {
         name: "Editor",
@@ -137,46 +147,75 @@ fr'x={4*10}\\n'
 `
                 else
                     snippet =
-`#include "mystuff/util.h"
+`#include "somefile.h"
 
-use namespace std;
+typedef struct {
+  void* arg_socket;
+  zmq_msg_t* arg_msg;
 
-namespace {
-enum Enum {
-  VAL1, VAL2, VAL3
-};
-
-char32_t unicode_string = U"\\U0010FFFF";
-string raw_string = R"delim(anything
-you
-want)delim";
-
-int Helper(const MyType& param) {
-  return 0;
-}
-} // Simple comment
+  sem_t sem;
+} acl_zmq_context;
 
 /**
  * Simple comment
  */
 
-class ForwardDec;
+#define p(X) (context->arg_##X)
 
-int main() {
-    int a;
+void* zmq_thread(void* context_pointer) {
+  acl_zmq_context* context = (acl_zmq_context*)context_pointer;
+  char ok = 'K', err = 'X';
+  int res;
 
-    cin << a;
-
-    cout << "Oh " << a;
-
-    return (0);
+  while (1) {
+    while ((res = sem_wait(&context->sem)) == EINTR);
+    if (res) {write(context->signal_fd, &err, 1); goto cleanup;}
+    switch(p(command)) {
+    case 0: goto cleanup;
+    case 1: p(socket) = zmq_socket(context->context, p(int)); break;
+    case 6: p(int) = zmq_setsockopt(p(socket), p(int), (void*)p(string), p(len)); break;
+    case 9: p(int) = zmq_poll(p(socket), p(int), p(len)); break;
+    }
+    p(command) = errno;
+    write(context->signal_fd, &ok, 1);
+  }
+ cleanup:
+  close(context->signal_fd);
+  free(context_pointer);
+  return 0;
 }
+
+void* zmq_thread_init(void* zmq_context, int signal_fd) {
+  acl_zmq_context* context = malloc(sizeof(acl_zmq_context));
+  pthread_t thread;
+
+  context->context = zmq_context;
+  sem_init(&context->sem, 1, 0);
+  pthread_create(&thread, 0, &zmq_thread, context);
+  return context;
+}
+
 `
                 this.code = snippet
-            }
+            },
+            onCmReady(cm) {
+                cm.on('keypress', () => {
+                    cm.showHint({
+                        completeSingle: false
+                    });
+                })
+            },
+            onCmFocus() {},
+            onCmCodeChange(newCode) {
+                this.code = newCode;
+            },
+            onCmChange() {},
         },
         mounted() {
             this.setSnippet('py')
+        },
+        created() {
+            CodeMirror.registerHelper('hintWords', 'python', pythonExtraHintWords)
         }
     }
 </script>
