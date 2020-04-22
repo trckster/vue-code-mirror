@@ -44,8 +44,10 @@
                 <li>-</li>
                 <li>-</li>
                 <li>
-                    Включены авто-подсказки при наборе ключевых слов (Highlight lang: python), также добавлено два ключевых слова:
-                    <b>veryStrangeFunction</b> и <b>STRANGE_BLACK_WALL_GROUP_CONSTANT</b>
+                    Включены автоподсказки при наборе ключевых слов (Highlight lang: python),
+                    также добавлено два ключевых слова:
+                    <b>veryStrangeFunction</b> и <b>STRANGE_BLACK_WALL_GROUP_CONSTANT</b>. Вместе с ними работает
+                    также динамическое автодополнение.
                 </li>
                 <li>-</li>
                 <li>-</li>
@@ -60,6 +62,7 @@
     import 'codemirror/theme/eclipse.css'
     import 'codemirror/addon/hint/show-hint'
     import 'codemirror/addon/hint/show-hint.css'
+    import 'codemirror/addon/hint/anyword-hint'
 
     import { jsSnippet, pythonSnippet } from "@/assets/js/snippets";
 
@@ -119,9 +122,11 @@
 
                 this.code = snippet
             },
+
             onCmReady(cm) {
                 cm.on('keypress', () => {
                     cm.showHint({
+                        hint: this.hintingFunction,
                         completeSingle: false
                     });
                 })
@@ -130,7 +135,29 @@
             onCmCodeChange(newCode) {
                 this.code = newCode;
             },
-            onCmChange() {}
+            onCmChange() {},
+
+            hintingFunction(cm, options) {
+                const dynamicWords = CodeMirror.hint.anyword(cm, options)
+
+                const staticWords = CodeMirror.hint.fromList(cm, {
+                    ...options,
+                    words: pythonExtraHintWords
+                })
+
+                let words = dynamicWords.list
+
+                if (staticWords !== undefined)
+                    /** Don't forget to delete duplicates */
+                    words = words.concat(staticWords.list)
+
+                if (words.length > 0)
+                    return {
+                        list: words,
+                        from: dynamicWords.from,
+                        to: dynamicWords.to
+                    }
+            }
         },
         mounted() {
             this.setSnippet('py')
