@@ -25,6 +25,12 @@ const pythonSnippet =
 
 literal = 79228162514264337593543950336L
 
+# Our beauty constant demonstration
+STRANGE_BLACK_WALL_GROUP_CONSTANT = 1111111
+
+# Error sample demonstration
+stupid stupid-error error
+
 if literal > 0 or True:
     two.comeOn('test')
 

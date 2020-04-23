@@ -27,6 +27,7 @@
 
         <div class="editor">
             <codemirror
+                    ref="myEditor"
                     :value="code"
                     @ready="onCmReady"
                     @focus="onCmFocus"
@@ -39,9 +40,12 @@
         <div class="explanation">
             <ol>
                 <li>
-                    Можно динамически менять подсветку синтаксиса
+                    Можно динамически менять подсветку синтаксиса.
                 </li>
-                <li>-</li>
+                <li>
+                    Добавлена подсветка двух кастомных выражений, 'stupid-error' и 'STRANGE_BLACK_WALL_GROUP_CONSTANT'.
+                    Пример можно посмотреть в сниппете питона. При наборе текста подсветка добавляется автоматически.
+                </li>
                 <li>-</li>
                 <li>
                     Включены автоподсказки при наборе ключевых слов (Highlight lang: python),
@@ -57,6 +61,7 @@
 </template>
 
 <script>
+    import multipleSearch from "@/assets/js/multipleSearch";
     import 'codemirror/lib/codemirror.css'
     import { CodeMirror, codemirror } from 'vue-codemirror'
     import 'codemirror/theme/eclipse.css'
@@ -107,6 +112,9 @@
                     lineNumbers: true,
                     line: true,
                 }
+            },
+            codemirror() {
+                return this.$refs.myEditor.codemirror
             }
         },
         methods: {
@@ -134,6 +142,8 @@
             onCmFocus() {},
             onCmCodeChange(newCode) {
                 this.code = newCode;
+
+                this.searchAndHighlight()
             },
             onCmChange() {},
 
@@ -157,6 +167,32 @@
                         from: dynamicWords.from,
                         to: dynamicWords.to
                     }
+            },
+
+            searchAndHighlight() {
+                const errorWord = 'stupid-error'
+                const constantWord = 'STRANGE_BLACK_WALL_GROUP_CONSTANT'
+
+                const errorsPositions = multipleSearch(this.code, errorWord)
+                const constantsPositions = multipleSearch(this.code, constantWord)
+
+                errorsPositions.forEach((position) => {
+                    this.codemirror.getDoc().markText(position, {
+                        line: position.line,
+                        ch: position.ch + errorWord.length
+                    }, {
+                        className: 'error'
+                    })
+                })
+
+                constantsPositions.forEach((position) => {
+                    this.codemirror.getDoc().markText(position, {
+                        line: position.line,
+                        ch: position.ch + constantWord.length
+                    }, {
+                        className: 'constant'
+                    })
+                })
             }
         },
         mounted() {
@@ -192,5 +228,16 @@
 
     .explanation {
         font-size: 1.5em;
+    }
+
+    .constant {
+        background-color: black;
+        color: white !important;
+    }
+
+    .error {
+        text-decoration-line: underline;
+        text-decoration-style: wavy;
+        text-decoration-color: red;
     }
 </style>
